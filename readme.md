@@ -1,149 +1,73 @@
 #### Esta avaliação tem por objetivo consolidar o aprendizado sobre conceitos de IPC, threads, concorrência e paralelismo.
 #### Linguagem utilizada: Python
 
-## Códigos Base:
-### Tipos e estruturas comuns
-#####  struct PGM {
-#####   int w, h, maxv; // maxv = 255
-#####   unsigned char* data; // w*h bytes (tons de cinza)
-#####  };
-
-##### struct Header {
-#####  int w, h, maxv; // metadados da imagem
-#####  int mode; // 0=NEGATIVO, 1=SLICE
-#####  int t1, t2; // válido se mode=SLICE
-##### };
-
-##### struct Task {
-#####  int row_start; // linha inicial (inclusiva)
-#####  int row_end; // linha final (exclusiva)
-##### };
-
-### Funções utilitárias (I/O de PGM) 
-##### int read_pgm(const char* path, PGM* img);
-##### int write_pgm(const char* path, const PGM* img);
-
-### Constantes de modo 
-##### #define MODE_NEG 0
-##### #define MODE_SLICE 1
+#### Problemática: Sistema de processamento paralelo para processamento de imagens
 
 <br>
 
-## FIFO 
-##### const char* FIFO_PATH = "/tmp/imgpipe";
+## Descrição Geral
+##### O estudo de Sistemas Operacionais envolve compreender como processos e threads
+##### podem cooperar e competir pelos recursos do sistema. A comunicação entre processos (IPC)
+##### permite que aplicações independentes troquem dados de forma organizada, enquanto o uso de
+##### threads possibilita a exploração do paralelismo, distribuindo o trabalho em múltiplas unidades
+##### de execução que compartilham memória.
 
-##### // estrutura base do processo emissor
-##### int main_sender(int argc, char** argv) {
-#####  // argv: img_sender <fifo_path> <entrada.pgm>
-#####  // Emissor só envia a imagem; quem decide o filtro é o worker pelo CLI dele.
-#####  parse_args_or_exit();
-#####  const char* fifo = argv[1];
-#####  const char* inpath = argv[2];
-
-#####  1. Garante a existência do FIFO (mkfifo se necessário)
-##### 
-#####  2. Lê a imagem PGM (P5) do disco
-##### 
-#####  3. Prepara cabeçalho (mode/t1/t2 serão ignorados pelo worker;
-#####  Aqui enviamos apenas metadados da imagem)
-
-#####  4. Abre FIFO para escrita (bloqueia até worker abrir para leitura)
-##### 
-#####  5. Envia cabeçalho + pixels
-##### 
-#####  6. Fecha FIFO e libera memória
-
-#####  7. Fim
-#####  return 0;
+##### No contexto de processamento de imagens, essas técnicas assumem papel essencial,
+##### pois operações sobre pixels podem ser naturalmente paralelizadas, reduzindo tempo de
+##### execução em imagens de grande porte. Entretanto, o paralelismo exige mecanismos de
+##### sincronização (como mutexes e semáforos) para garantir consistência dos dados e evitar
+##### condições de corrida. Assim, a combinação de IPC, threads e sincronização fornece uma base
+##### prática para projetar sistemas eficientes que unem concorrência e correção na manipulação
+##### de dados visuais.
 
 <br>
 
-## Processo Worker (que realiza o processamento de imagens) – Variáveis globais
-###  Fila de tarefas (circular) + sincronização
-##### #define QMAX 128
-##### Task queue_buf[QMAX];
-##### int q_head = 0, q_tail = 0, q_count = 0;
+## Fundamentação Teórica
+##### A comunicação entre processos (IPC) é um mecanismo essencial para que aplicações
+##### distintas possam trocar dados e coordenar atividades. Entre os métodos disponíveis em
+##### sistemas Unix, destacam-se os FIFOs (named pipes), que permitem a transmissão de fluxos
+##### de bytes entre processos independentes.
 
-<BR>
+##### No nível intra-processo, a utilização de threads possibilita a execução concorrente em
+##### um espaço de memória compartilhado, favorecendo o paralelismo de dados em aplicações
+##### que envolvem grande volume de operações repetitivas, como no processamento de imagens.
+##### Entretanto, o uso de threads introduz a necessidade de sincronização. Mecanismos como
+##### mutexes (para exclusão mútua) e semáforos (para controle de acesso e sinalização de
+##### eventos) são fundamentais para evitar condições de corrida, garantir integridade de dados e
+##### coordenar corretamente a execução concorrente.
 
-#####  pthread_mutex_t q_lock = MUTEX_INIT;
-#####  sem_t sem_items; // quantas tarefas disponíveis
-#####  sem_t sem_space; // espaço livre na fila
+##### No campo do processamento digital de imagens, operações como filtro negativo
+##### (transformação linear simples: out = 255 – in) e limiarização com fatiamento (manutenção de
+##### valores dentro de uma faixa [t1, t2] e supressão dos demais) são particularmente adequadas
+##### para estudo, pois envolvem processamento independente por pixel, permitindo observar
+##### ganhos concretos com o uso de paralelismo.
 
 <br>
 
-##  Sinalização de término
-#####  pthread_mutex_t done_lock = MUTEX_INIT;
-#####  sem_t sem_done; // sinaliza quando todas as tarefas finalizam
-#####  int remaining_tasks = 0;
-
-<br>
-
-##  Dados compartilhados para processamento
-#####  PGM g_in, g_out;
-#####  int g_mode; // MODE_NEG ou MODE_SLICE
-#####  int g_t1, g_t2;
-#####  int g_nthreads = 4;
-
-<BR>
-
-## Funções da fila (produtor/consumidor), base do filtro e thread base
-#### //filtros
-#### void apply_negative_block(int rs, int re) {
-####  //lógica do filtro
-#### }
-#### void apply_slice_block(int rs, int re, int t1, int t2) {
-####  // lógica do filtro
-#### }
-#### //thread base
-#### void* worker_thread(void* arg) {
-####  while (1) {
-####  //lógica da thread
-####  }
-####  return NULL;
-#### }
-
-<BR>
-
-## Função principal
-####  int main_worker(int argc, char** argv) {
-####    // argv: img_worker <fifo_path> <saida.pgm> <negativo|slice> [t1 t2] [nthreads]
-####    parse_args_or_exit();
-####    const char* fifo = argv[1];
-####    const char* outpth = argv[2];
-####    const char* mode = argv[3];
-####    if (mode == "negativo") {
-####    g_mode = MODE_NEG;
-####    g_nthreads = (argc >= 5) ? atoi(argv[4]) : 4;
-####    } else if (mode == "slice") {
-####    g_mode = MODE_SLICE;
-####    g_t1 = atoi(argv[4]);
-####    g_t2 = atoi(argv[5]);
-####    g_nthreads = (argc >= 7) ? atoi(argv[6]) : 4;
-####    } else {
-####    exit_error("Modo inválido");
-####    }
-####    // 1) Garante FIFO e abre para leitura (bloqueia até sender abrir em escrita)
-####    // 2) Lê cabeçalho + pixels do FIFO
-####    
-####    // 3) Cria pool de threads e fila de tarefas – porém, não é necessário ser um pool de threads
-####    
-####    // 5) Aguarda término de todas as tarefas
-####    
-####    // 7) Grava imagem de saída
-####    
-####    // 8) Libera recursos
-####    // 9) Fim
-####    return 0;
-#### }
-#### 
-
-## Base matemática e código base dos filtros
-#### Operação de negativo: 𝑠 = 𝑇(𝑟) = 𝐿 − 1 − 𝑟 = 255 − 𝑟
-#### onde 𝑟 representa o pixel de entrada e 𝐿 é o máximo valor representado pela quantidade e pixel na imagem
-
-
-## Pseudo código do negativo
-#### Loop 1 de 0 até tamanho x:
-####  Loop 2 de 0 até tamanho y:
-####  novo_pixel[x,y] = 255 – valor_pixel_original[x,y]
+### Componentes do Sistema Arquitetura da Solução
+##### A solução proposta é composta por dois processos independentes que se comunicam
+##### através de um FIFO nomeado:
+##### 1. Processo Emissor (Sender): responsável por carregar a imagem de entrada no formato
+##### PGM (P5), empacotar os metadados (largura, altura, valor máximo de intensidade) e
+##### transmitir os dados de pixels pelo FIFO.
+##### 2. Processo Trabalhador (Worker): recebe os dados da imagem via FIFO, instancia um pool
+##### de threads e distribui as tarefas em uma fila protegida por mutex e semáforos. Cada
+##### thread processa um subconjunto das linhas da imagem, aplicando o filtro especificado
+##### (negativo ou limiarização com fatiamento). Ao final, o processo trabalhador salva a
+##### imagem resultante em disco.
+##### A sincronização é garantida por:
+##### • Mutex, para proteger a fila de tarefas;
+##### • Semáforos contadores, para coordenar produção e consumo das tarefas;
+##### • Semáforo de conclusão, para indicar o término do processamento.
+##### Resultados Esperados
+##### A execução da solução deverá evidenciar:
+##### • A correta transmissão de dados entre processos independentes por meio de FIFO,
+##### validando o uso de IPC;
+##### • A aplicação correta dos filtros de imagem, resultando em arquivos processados (negativo
+##### e limiarização por fatiamento) de acordo com os parâmetros fornecidos;
+##### • A redução do tempo de processamento em imagens de grande porte, proporcionada pela
+##### distribuição de trabalho entre múltiplas threads;
+##### • O funcionamento adequado dos mecanismos de sincronização, garantindo a integridade
+##### dos dados e a ausência de condições de corrida;
+##### • A demonstração prática da relevância dos conceitos de processos, threads, paralelismo
+##### e sincronização para problemas reais de computação
