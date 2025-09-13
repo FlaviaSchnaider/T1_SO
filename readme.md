@@ -44,7 +44,7 @@
 
 <br>
 
-### Componentes do Sistema Arquitetura da Solução
+## Componentes do Sistema Arquitetura da Solução
 ##### A solução proposta é composta por dois processos independentes que se comunicam
 ##### através de um FIFO nomeado:
 ##### 1. Processo Emissor (Sender): responsável por carregar a imagem de entrada no formato
@@ -59,7 +59,9 @@
 ##### • Mutex, para proteger a fila de tarefas;
 ##### • Semáforos contadores, para coordenar produção e consumo das tarefas;
 ##### • Semáforo de conclusão, para indicar o término do processamento.
-##### Resultados Esperados
+
+
+## Resultados Esperados
 ##### A execução da solução deverá evidenciar:
 ##### • A correta transmissão de dados entre processos independentes por meio de FIFO,
 ##### validando o uso de IPC;
@@ -70,4 +72,4 @@
 ##### • O funcionamento adequado dos mecanismos de sincronização, garantindo a integridade
 ##### dos dados e a ausência de condições de corrida;
 ##### • A demonstração prática da relevância dos conceitos de processos, threads, paralelismo
-##### e sincronização para problemas reais de computação
+##### e sincronização para problemas reais de computação 
