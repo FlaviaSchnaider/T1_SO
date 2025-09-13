@@ -18,8 +18,7 @@ def load_as_pgm_bytes(img_path):
         with open(img_path, "rb") as f:
             if f.readline().strip() != b'P5':
                 raise ValueError("PGM não está no modo binário P5")
-            # pula comentários
-            line = f.readline()
+            line = f.readline() # pula comentários
             while line.startswith(b'#'):
                 line = f.readline()
             w, h = map(int, line.split())
@@ -28,18 +27,15 @@ def load_as_pgm_bytes(img_path):
             if len(data) != w*h:
                 raise ValueError("Tamanho do payload PGM inconsistente")
             if maxv != 255:
-                # normaliza (raro em 8 bits, mas deixo anotado)
                 data = bytearray(int(px * 255 / maxv) for px in data)
                 maxv = 255
             return w, h, maxv, data
     else:
-        # usar Pillow para PNG/JPG/etc
         try:
             from PIL import Image
         except ImportError:
-            print("Instale Pillow: pip install pillow")
             sys.exit(1)
-        im = Image.open(img_path).convert("L")  # grayscale 8 bits
+        im = Image.open(img_path).convert("L")  
         w, h = im.size
         data = bytearray(im.tobytes())
         return w, h, 255, data

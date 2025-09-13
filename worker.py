@@ -4,7 +4,6 @@ import struct
 import threading
 import queue
 import time
-import csv
 
 MODE_NEG = 0
 MODE_SLICE = 1
@@ -24,7 +23,6 @@ def apply_negative_block(data, rs, re, w):
             data[i] = 255 - data[i]
 
 def apply_slice_block(data, rs, re, w):
-    # Limites fixos para a sua imagem
     t1, t2 = 50, 100
     for y in range(rs, re):
         off = y * w
@@ -45,7 +43,7 @@ def worker_thread(q, data, w, mode):
         if mode == MODE_NEG:
             apply_negative_block(data, rs, re, w)
         else:
-            apply_slice_block(data, rs, re, w)  # usa limites fixos
+            apply_slice_block(data, rs, re, w)
         q.task_done()
 
 def ensure_fifo(path):
@@ -68,7 +66,6 @@ def main():
         nthreads = int(sys.argv[4]) if len(sys.argv) >= 5 else 4
     elif mode_s == "slice":
         mode = MODE_SLICE
-        # agora slice NÃO recebe t1/t2 pela CLI (valores fixos no código)
         nthreads = int(sys.argv[4]) if len(sys.argv) >= 5 else 4
     else:
         print("Modo inválido (use 'negativo' ou 'slice').")
@@ -78,7 +75,7 @@ def main():
 
     print("[Worker] Aguardando dados do sender...")
     with open(fifo, "rb") as f:
-        header = f.read(12)  # 3 ints (w,h,maxv)
+        header = f.read(12)
         if len(header) != 12:
             print("[Worker] Cabeçalho inválido/curto.")
             sys.exit(1)
@@ -92,11 +89,9 @@ def main():
 
     print(f"[Worker] Recebida imagem {w}x{h}, maxv={maxv}")
 
-    # dividir em blocos por linha
     start_time = time.time()
     q = queue.Queue()
 
-    # balanceamento simples: blocos ~iguais cobrindo a altura inteira
     block = max(1, h // nthreads)
     row = 0
     while row < h:
@@ -119,15 +114,6 @@ def main():
     print(f"[Worker] Tempo de processamento: {elapsed:.4f} s")
 
     write_pgm(outpth, w, h, maxv, data)
-
-    # resultados.csv com cabeçalho (se não existir)
-    need_header = not os.path.exists("resultados.csv")
-    with open("resultados.csv", "a", newline="") as f:
-        writer = csv.writer(f)
-        if need_header:
-            writer.writerow(["largura", "altura", "nthreads", "modo", "tempo_s"])
-        writer.writerow([w, h, nthreads, mode_s, f"{elapsed:.6f}"])
-
     print(f"[Worker] Imagem processada salva em {outpth}")
 
 if __name__ == "__main__":
