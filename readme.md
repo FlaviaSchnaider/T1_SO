@@ -74,6 +74,6 @@
 ##### • A demonstração prática da relevância dos conceitos de processos, threads, paralelismo
 ##### e sincronização para problemas reais de computação 
 
-# Comando Worker Negativo: python worker.py /tmp/imgpipe saida_neg.pgm negativo 4
-# Comando Worker Slice: python worker.py /tmp/imgpipe saida_slice.pgm slice 4
-# Comando Sender: python sender.py /tmp/imgpipe ./tmp/imgpipe.png
+### Comando Worker Negativo: python worker.py /tmp/imgpipe saida_neg.pgm negativo 4
+### Comando Worker Slice: python worker.py /tmp/imgpipe saida_slice.pgm slice 4
+### Comando Sender: python sender.py /tmp/imgpipe ./tmp/imgpipe.png
